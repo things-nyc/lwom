@@ -38,8 +38,6 @@ Strict PHY‑level emulation at the LMIC `radio()` interface produced **timing c
 ---
 
 ## References
-- Meshtastic payload/structure: `Data.payload` **233 B** — see `mesh.options` and message architecture docs.
+- Meshtastic payload/structure: `Data.payload` **233 B** — `mesh.options` and message architecture.
 - TTN/TTS US915 payload sizing and RX parameter controls.
 - TTS gateway connectivity: Semtech UDP (legacy) and Basics Station (recommended).
-
-See the linked docs for citations.

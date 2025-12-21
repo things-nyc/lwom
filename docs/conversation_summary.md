@@ -1,44 +1,20 @@
 # Conversation Summary: LoRaWAN-over-Meshtastic Architecture
 
 ## Initial Goal
-The user wanted to design an architecture to tunnel **LoRaWAN Class A** traffic over **Meshtastic**, so that LMIC-based devices out of range of a LoRaWAN gateway could still communicate with a LoRaWAN Network Server (LNS). Key requirements:
-- Keep LMIC API unchanged for upper-level firmware.
-- Use Meshtastic as a transport layer for LoRaWAN PHYPayloads.
-- Dedicated Meshtastic node forwards data to a Linux process simulating a gateway.
-- Gateway emulation via Semtech UDP first, LoRa Basics Station later.
-- Design for testability and TDD.
-- Region: US915; consider RX1/RX2 timing, ADR limitations, and latency.
+Design an architecture to tunnel **LoRaWAN Class A** traffic over **Meshtastic**, keeping the **LMIC API** unchanged. Use a dedicated Meshtastic node + Linux bridge to reach an LNS.
 
 ## Steps Taken
-1. **Drafted a detailed architecture**:
-   - Components: LMIC shim, Meshtastic receiver, Linux pseudo-gateway.
-   - Wire format: custom protobuf (`LwomFrame`) inside Meshtastic `Data`.
-   - Timing strategy: increase RX1 delay to absorb latency.
-   - Risks: ADR, gateway diversity, timing precision.
-
-2. **Created a GitHub-ready Markdown document**:
-   - Included Mermaid diagrams for system flow and timing.
-   - Covered background, constraints, responsibilities, wire format, testing plan, roadmap.
-
-3. **Split into two files**:
-   - `docs/lwom-overview.md`: High-level architecture and roadmap.
-   - `docs/lwom-implementation.md`: Detailed wire format, interfaces, test plan.
-
-4. **Generated downloadable .md files**:
-   - Provided direct download links for both files.
+1. Drafted an initial architecture (PHY emulation at LMIC `radio()` layer).
+2. Produced GitHub-ready docs with Mermaid diagrams.
+3. Split into overview and implementation files; generated downloadable .md files.
+4. Pivoted after reflection to a **Meshtastic-region model** (concept-level mapping, no PHY emulation).
+5. Regenerated docs with **payload cap 220 B**, **soft RX windows**, **ADR disabled**, **TTS preferred**.
 
 ## Current State
-- Two Markdown files delivered:
-  - [docs_lwom-overview.md](docs_lwom-overview.md)
-  - [docs_lwom-implementation.md](docs_lwom-implementation.md)
-- Files contain:
-  - Overview: architecture, diagrams, roadmap.
-  - Implementation: protobuf schema, LMIC shim details, bridge logic, test strategy.
+- Overview and Implementation docs completed for the **Meshtastic-region model**.
+- Supplemental summaries created to capture decisions and context.
 
-## Next Possible Actions
-- Generate a **zip archive** of both files for convenience.
-- Add a **Makefile target** to render Mermaid diagrams to PNG for PDF export.
-- Begin coding:
-  - `LwomFrame.proto` and nanopb generation.
-  - LMIC shim and Linux UDP bridge.
-  - Integration tests with ChirpStack or The Things Stack.
+## Next Actions
+- Integrate with **The Things Stack (TTN/TTS)** via **UDP** first; plan migration to **Basics Station**.
+- Implement LMIC Meshtastic runtime regions and the device transport adapter.
+- Build the Linux bridge and run OTAA/ACK tests with soft RX timing.

@@ -1,89 +1,32 @@
 # Project Knowledge Summary: LoRaWAN-over-Meshtastic (LWoM)
 
 ## Project Goal
-Enable **LoRaWAN Class A devices** (using LMIC) to communicate when out of range of a LoRaWAN gateway by tunneling LoRaWAN traffic over **Meshtastic**. The LMIC API remains unchanged for upper-level firmware.
-
----
+Enable **LoRaWAN Class A devices** (using LMIC) to communicate when out of range of a LoRaWAN gateway by tunneling LoRaWAN traffic over **Meshtastic**. Keep LMIC’s high-level API unchanged.
 
 ## Architecture Overview
-- **Device-side LMIC Shim**: Implements LMIC radio HAL, encapsulates PHYPayload into Meshtastic `Data` messages on a private port.
-- **Dedicated Meshtastic Receiver**: Always-on node connected via USB to Linux.
-- **Linux Bridge (Pseudo-Gateway)**: Emulates Semtech UDP Packet Forwarder initially; later supports LoRa Basics Station.
-- **LNS**: ChirpStack or The Things Stack.
-
-### System Diagram
-```
-End Device (LMIC) -> Meshtastic Node -> Linux Bridge -> LNS
-```
-
----
-
-## Components
-1. **LMIC Shim**
-   - TX: Wrap PHYPayload + meta into LwomFrame; send via Meshtastic.
-   - RX: Open RX1/RX2 windows; inject downlink bytes from Meshtastic.
-   - Power: Keep Meshtastic mostly off; no relay.
-
-2. **Meshtastic Receiver**
-   - USB link to Linux; forwards uplinks and downlinks.
-
-3. **Linux Bridge**
-   - Semtech UDP: `rxpk` uplinks, `txpk` downlinks.
-   - Downlink scheduler: compute deadlines; forward via Meshtastic.
-
----
+- **LMIC Meshtastic regions** (`MESHTASTIC_US915`, `MESHTASTIC_EU868`, …) define caps and soft RX timing; ADR disabled.
+- **Device transport adapter** sends/receives **PHYPayload bytes** via Meshtastic `Data.payload` (private portnum, dedicated channel/key).
+- **Dedicated Meshtastic receiver** on USB → **Linux bridge** → **TTS** (UDP first; Basics Station later).
 
 ## Wire Format
-**LwomFrame fields**:
-- dir: UPLINK | DOWNLINK
-- phy_payload: LoRaWAN PHYPayload (opaque)
-- freq_mhz, datr, codr, txpwr_dbm
-- tmst_hint
-- optional: dev_eui, fcnt, rssi_dbm, lsnr_db
-
----
+- Meshtastic `Data.payload` carries LoRaWAN **PHYPayload** (opaque).
+- **Max PHYPayload**: **233 B** → **Max FRMPayload**: **220 B** (no FOpts).
 
 ## Timing Strategy
-- Default RX1=1s, RX2=2s after TX end.
-- Plan: Increase RX1 delay to 5s via MAC (RXTimingSetupReq).
-- Use RX2 as fallback.
+- **Soft RX windows**: RX1 delay **5–10 s**; RX2 fallback; configure via MAC (`RXTimingSetupReq`).
 
----
+## US915 Details
+- LoRaWAN payload tables per TTN docs; we do **not** emulate PHY data rates/timing—Meshtastic transport drives constraints.
 
-## US915 Region Details
-- Uplink DRs: DR0–DR4 (SF10–SF7 @125kHz; SF8@500kHz).
-- Downlink DRs: DR8–DR13 (SF12–SF7 @500kHz).
-- Downlink freqs: 923.3–927.5 MHz; RX2 default: 923.3 MHz @ DR8.
-
----
-
-## Risks & Limitations
-- ADR unreliable (synthetic metrics; no gateway diversity).
-- No geolocation; single virtual gateway.
-- Class B/C out of scope.
-- Regulatory compliance: ensure Meshtastic RF usage is legal.
-
----
+## Risks & Limits
+- ADR unreliable without RF metrics; disable.
+- No gateway diversity/geolocation; focus on E2E delivery.
 
 ## Testing Plan
-- **Unit**: DR/freq mapping; LwomFrame serialization; rxpk JSON generation.
-- **Integration**: ChirpStack/TTS with UDP gateway; OTAA join; latency injection.
-- **HIL**: Real Meshtastic node + LMIC device.
-
----
+- Unit (payload caps, serialization), Integration (OTAA, ACKs via TTS), HIL (real Meshtastic node), latency injection.
 
 ## Deliverables
-- `LwomFrame.proto` + nanopb generation.
-- LMIC shim implementation.
-- Linux UDP bridge.
-- Dockerized LNS for tests.
-- CI with unit/integration tests.
-
----
+- LMIC regions, transport adapter, Linux bridge (UDP→TTS), CI harness.
 
 ## Next Steps
-1. Confirm LNS choice (ChirpStack vs TTS).
-2. Decide ADR policy (disable initially).
-3. Implement LMIC shim and UDP bridge.
-4. Integration tests with OTAA join.
-5. Add Basics Station backend later.
+- Implement and test end-to-end with TTN/TTS; consider Basics Station migration.
